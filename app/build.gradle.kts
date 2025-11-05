@@ -1,3 +1,6 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -5,6 +8,12 @@ plugins {
     id("com.google.gms.google-services")
 }
 
+// Leer API Key desde local.properties
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localProperties.load(FileInputStream(localPropertiesFile))
+}
 android {
     namespace = "com.example.taller3icm"
     compileSdk {
@@ -17,6 +26,9 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
+
+        manifestPlaceholders["MAPS_API_KEY"] =
+            localProperties.getProperty("MAPS_API_KEY", "")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

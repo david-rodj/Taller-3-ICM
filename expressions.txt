@@ -1,0 +1,1 @@
+regex:AIzaSy[0-9A-Za-z_-]{33}==>YOUR_API_KEY_HERE
