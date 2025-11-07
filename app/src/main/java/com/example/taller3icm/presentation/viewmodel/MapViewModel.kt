@@ -20,8 +20,6 @@ class MapViewModel(
 
     private val _userPath = mutableListOf<LatLng>()
     private val _otherUsersPaths = mutableMapOf<String, MutableList<LatLng>>()
-
-    //  NUEVO: Guardamos las posiciones anteriores para detectar movimientos
     private val _previousPositions = mutableMapOf<String, LatLng>()
 
     init {
@@ -36,7 +34,6 @@ class MapViewModel(
         }
     }
 
-    // MODIFICADO: Ahora detecta movimientos y actualiza polylines
     private fun observeOnlineUsers() {
         viewModelScope.launch {
             userRepository.getOnlineUsersFlow()
@@ -44,31 +41,23 @@ class MapViewModel(
                     val currentUid = authRepository.currentUser?.uid
                     val filteredUsers = users.filter { it.uid != currentUid }
 
-                    // Procesar cada usuario en línea
                     filteredUsers.forEach { user ->
                         val currentPos = LatLng(user.latitud, user.longitud)
 
-                        // Solo actualizar si la posición cambió (evita polylines duplicadas)
                         if (user.latitud != 0.0 && user.longitud != 0.0) {
                             val previousPos = _previousPositions[user.uid]
 
-                            // Si es una nueva posición o cambió
                             if (previousPos == null || previousPos != currentPos) {
-                                // Crear lista si no existe
                                 if (!_otherUsersPaths.containsKey(user.uid)) {
                                     _otherUsersPaths[user.uid] = mutableListOf()
                                 }
 
-                                // Agregar nuevo punto a la ruta
                                 _otherUsersPaths[user.uid]?.add(currentPos)
-
-                                // Guardar posición actual como anterior
                                 _previousPositions[user.uid] = currentPos
                             }
                         }
                     }
 
-                    // NUEVO: Limpiar rutas de usuarios desconectados
                     val onlineUids = filteredUsers.map { it.uid }.toSet()
                     val disconnectedUsers = _otherUsersPaths.keys - onlineUids
 
@@ -77,7 +66,6 @@ class MapViewModel(
                         _previousPositions.remove(uid)
                     }
 
-                    // Actualizar estado con usuarios y rutas
                     _uiState.update { state ->
                         state.copy(
                             onlineUsers = filteredUsers,
@@ -93,7 +81,6 @@ class MapViewModel(
             val uid = authRepository.currentUser?.uid ?: return@launch
 
             if (!enabled) {
-                // Limpiar la ruta al desconectar
                 _userPath.clear()
                 _uiState.update { it.copy(userPath = emptyList()) }
             }
@@ -108,12 +95,22 @@ class MapViewModel(
             val uid = authRepository.currentUser?.uid ?: return@launch
             val latLng = LatLng(location.latitude, location.longitude)
 
-            // Actualizar en Firestore (otros usuarios lo verán)
+            // Actualizar en Firestore
             userRepository.updateUserLocation(uid, location.latitude, location.longitude)
 
             // Agregar a la ruta local
             _userPath.add(latLng)
-            _uiState.update { it.copy(userPath = _userPath.toList()) }
+
+            // SOLUCIÓN: Actualizar currentUser con las nuevas coordenadas
+            _uiState.update { state ->
+                state.copy(
+                    currentUser = state.currentUser?.copy(
+                        latitud = location.latitude,
+                        longitud = location.longitude
+                    ),
+                    userPath = _userPath.toList()
+                )
+            }
         }
     }
 
@@ -121,7 +118,6 @@ class MapViewModel(
         viewModelScope.launch {
             val uid = authRepository.currentUser?.uid
             if (uid != null) {
-                // Desconectar antes de cerrar sesión
                 userRepository.updateConnectionStatus(uid, false)
             }
             authRepository.logout()
@@ -131,7 +127,6 @@ class MapViewModel(
 
     override fun onCleared() {
         super.onCleared()
-        // Limpiar recursos
         viewModelScope.launch {
             val uid = authRepository.currentUser?.uid
             if (uid != null) {

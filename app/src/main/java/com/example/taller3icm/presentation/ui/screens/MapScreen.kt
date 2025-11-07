@@ -2,15 +2,18 @@ package com.example.taller3icm.presentation.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material3.*
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.taller3icm.presentation.viewmodel.MapViewModel
@@ -32,10 +35,8 @@ fun MapScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
-    // Servicio de ubicación
     val locationService = remember { LocationService(context) }
 
-    // Permisos de ubicación
     val locationPermissions = rememberMultiplePermissionsState(
         permissions = listOf(
             android.Manifest.permission.ACCESS_FINE_LOCATION,
@@ -43,28 +44,23 @@ fun MapScreen(
         )
     )
 
-    // Estado del menú
     var showMenu by remember { mutableStateOf(false) }
     var showPermissionDialog by remember { mutableStateOf(false) }
 
-    // Posición inicial del mapa (Bogotá)
     val defaultPosition = LatLng(4.7110, -74.0721)
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(defaultPosition, 12f)
     }
 
-    // Observar cambios de ubicación
     LaunchedEffect(uiState.isLocationEnabled) {
         if (uiState.isLocationEnabled) {
             if (locationPermissions.allPermissionsGranted) {
                 locationService.requestLocationUpdates().collect { location ->
                     viewModel.onLocationUpdate(location)
-                    // Mover cámara a la ubicación actual
                     val newPosition = LatLng(location.latitude, location.longitude)
                     cameraPositionState.position = CameraPosition.fromLatLngZoom(newPosition, 15f)
                 }
             } else {
-                // Si no hay permisos, desactivar el switch
                 viewModel.onLocationToggle(false)
                 showPermissionDialog = true
             }
@@ -73,7 +69,6 @@ fun MapScreen(
         }
     }
 
-    // Diálogo de permisos
     if (showPermissionDialog) {
         AlertDialog(
             onDismissRequest = { showPermissionDialog = false },
@@ -133,7 +128,7 @@ fun MapScreen(
                                 viewModel.onLogout(onSuccess = onLogout)
                             },
                             leadingIcon = {
-                                Icon(Icons.Default.ExitToApp, contentDescription = null)
+                                Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null)
                             }
                         )
                     }
@@ -149,7 +144,6 @@ fun MapScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Mapa
             GoogleMap(
                 modifier = Modifier.fillMaxSize(),
                 cameraPositionState = cameraPositionState,
@@ -170,7 +164,6 @@ fun MapScreen(
                             )
                         )
 
-                        // Polyline del usuario actual
                         if (uiState.userPath.isNotEmpty()) {
                             Polyline(
                                 points = uiState.userPath,
@@ -197,7 +190,6 @@ fun MapScreen(
                             )
                         )
 
-                        // Polyline de otros usuarios
                         uiState.otherUsersPaths[user.uid]?.let { path ->
                             if (path.isNotEmpty()) {
                                 Polyline(
@@ -211,45 +203,71 @@ fun MapScreen(
                 }
             }
 
-            // Switch de ubicación (flotante)
+            // SOLUCIÓN: Card compacta en la parte superior con switch Y contador
             Card(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .padding(16.dp),
+                    .padding(12.dp)
+                    .fillMaxWidth(0.95f),
                 elevation = CardDefaults.cardElevation(8.dp)
             ) {
                 Row(
-                    modifier = Modifier.padding(16.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = if (uiState.isLocationEnabled) "Conectado" else "Desconectado",
+                    // Estado de conexión
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.weight(1f)
-                    )
-                    Switch(
-                        checked = uiState.isLocationEnabled,
-                        onCheckedChange = { enabled ->
-                            if (enabled && !locationPermissions.allPermissionsGranted) {
-                                showPermissionDialog = true
-                            } else {
-                                viewModel.onLocationToggle(enabled)
-                            }
-                        }
-                    )
-                }
-            }
+                    ) {
+                        Text(
+                            text = if (uiState.isLocationEnabled) "Conectado" else "Desconectado",
+                            fontSize = 14.sp
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Switch(
+                            checked = uiState.isLocationEnabled,
+                            onCheckedChange = { enabled ->
+                                if (enabled && !locationPermissions.allPermissionsGranted) {
+                                    showPermissionDialog = true
+                                } else {
+                                    viewModel.onLocationToggle(enabled)
+                                }
+                            },
+                            modifier = Modifier.scale(0.8f)
+                        )
+                    }
 
-            // Contador de usuarios en línea
-            Card(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(16.dp),
-                elevation = CardDefaults.cardElevation(8.dp)
-            ) {
-                Text(
-                    text = "Usuarios en línea: ${uiState.onlineUsers.size}",
-                    modifier = Modifier.padding(12.dp)
-                )
+                    // Divider vertical
+                    HorizontalDivider(
+                        modifier = Modifier
+                            .height(30.dp)
+                            .width(1.dp),
+                        thickness = DividerDefaults.Thickness, color = MaterialTheme.colorScheme.outline
+                    )
+
+                    // Contador de usuarios
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(start = 12.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = "${uiState.onlineUsers.size}",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
             }
         }
     }
