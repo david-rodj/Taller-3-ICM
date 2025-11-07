@@ -10,7 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import com.example.taller3icm.navigation.AppNavigation
-import com.example.taller3icm.ui.theme.Taller3Theme
+import com.example.taller3icm.presentation.ui.theme.Taller3ICMTheme
 import com.google.firebase.FirebaseApp
 
 class MainActivity : ComponentActivity() {
@@ -23,7 +23,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
-            Taller3Theme {
+            Taller3ICMTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background

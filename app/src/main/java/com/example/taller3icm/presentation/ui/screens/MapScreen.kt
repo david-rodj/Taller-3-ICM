@@ -16,14 +16,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.taller3icm.presentation.viewmodel.MapViewModel
 import com.example.taller3icm.utils.LocationService
 import com.example.taller3icm.utils.MarkerUtils
-import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.*
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.launch
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.rememberMultiplePermissionsState
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun MapScreen(
     onNavigateToProfile: () -> Unit = {},
@@ -32,13 +31,21 @@ fun MapScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
 
     // Servicio de ubicación
     val locationService = remember { LocationService(context) }
 
+    // Permisos de ubicación
+    val locationPermissions = rememberMultiplePermissionsState(
+        permissions = listOf(
+            android.Manifest.permission.ACCESS_FINE_LOCATION,
+            android.Manifest.permission.ACCESS_COARSE_LOCATION
+        )
+    )
+
     // Estado del menú
     var showMenu by remember { mutableStateOf(false) }
+    var showPermissionDialog by remember { mutableStateOf(false) }
 
     // Posición inicial del mapa (Bogotá)
     val defaultPosition = LatLng(4.7110, -74.0721)
@@ -49,15 +56,50 @@ fun MapScreen(
     // Observar cambios de ubicación
     LaunchedEffect(uiState.isLocationEnabled) {
         if (uiState.isLocationEnabled) {
-            locationService.requestLocationUpdates().collect { location ->
-                viewModel.onLocationUpdate(location)
-                // Mover cámara a la ubicación actual
-                val newPosition = LatLng(location.latitude, location.longitude)
-                cameraPositionState.position = CameraPosition.fromLatLngZoom(newPosition, 15f)
+            if (locationPermissions.allPermissionsGranted) {
+                locationService.requestLocationUpdates().collect { location ->
+                    viewModel.onLocationUpdate(location)
+                    // Mover cámara a la ubicación actual
+                    val newPosition = LatLng(location.latitude, location.longitude)
+                    cameraPositionState.position = CameraPosition.fromLatLngZoom(newPosition, 15f)
+                }
+            } else {
+                // Si no hay permisos, desactivar el switch
+                viewModel.onLocationToggle(false)
+                showPermissionDialog = true
             }
         } else {
             locationService.stopLocationUpdates()
         }
+    }
+
+    // Diálogo de permisos
+    if (showPermissionDialog) {
+        AlertDialog(
+            onDismissRequest = { showPermissionDialog = false },
+            title = { Text("Permisos de Ubicación Requeridos") },
+            text = {
+                Text(
+                    "Esta aplicación necesita acceso a tu ubicación para " +
+                            "mostrar tu posición en tiempo real y ver otros usuarios."
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        locationPermissions.launchMultiplePermissionRequest()
+                        showPermissionDialog = false
+                    }
+                ) {
+                    Text("Conceder Permisos")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPermissionDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
     }
 
     Scaffold(
@@ -123,7 +165,7 @@ fun MapScreen(
                             title = "Yo",
                             snippet = user.nombre,
                             icon = MarkerUtils.createCustomMarker(
-                                context = LocalContext.current,
+                                context = context,
                                 color = android.graphics.Color.BLUE
                             )
                         )
@@ -149,7 +191,7 @@ fun MapScreen(
                             title = user.nombre,
                             snippet = "En línea",
                             icon = MarkerUtils.createTextMarker(
-                                context = LocalContext.current,
+                                context = context,
                                 text = user.nombre,
                                 backgroundColor = android.graphics.Color.RED
                             )
@@ -186,7 +228,13 @@ fun MapScreen(
                     )
                     Switch(
                         checked = uiState.isLocationEnabled,
-                        onCheckedChange = { viewModel.onLocationToggle(it) }
+                        onCheckedChange = { enabled ->
+                            if (enabled && !locationPermissions.allPermissionsGranted) {
+                                showPermissionDialog = true
+                            } else {
+                                viewModel.onLocationToggle(enabled)
+                            }
+                        }
                     )
                 }
             }

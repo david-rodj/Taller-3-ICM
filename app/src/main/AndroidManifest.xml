@@ -8,10 +8,10 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
-    <!-- Feature de ubicación requerido -->
+    <!-- Feature de ubicación no requerido obligatoriamente -->
     <uses-feature
         android:name="android.hardware.location.gps"
-        android:required="true" />
+        android:required="false" />
 
     <application
         android:allowBackup="true"
