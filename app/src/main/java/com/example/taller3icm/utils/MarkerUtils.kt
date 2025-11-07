@@ -7,6 +7,7 @@ import android.graphics.Paint
 import androidx.core.content.ContextCompat
 import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
+import androidx.core.graphics.createBitmap
 
 object MarkerUtils {
 
@@ -18,7 +19,7 @@ object MarkerUtils {
         color: Int,
         size: Int = 80
     ): BitmapDescriptor {
-        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val bitmap = createBitmap(size, size)
         val canvas = Canvas(bitmap)
 
         val paint = Paint().apply {
