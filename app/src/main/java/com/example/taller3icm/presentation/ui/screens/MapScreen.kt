@@ -2,11 +2,10 @@ package com.example.taller3icm.presentation.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material3.*
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -128,7 +127,7 @@ fun MapScreen(
                                 viewModel.onLogout(onSuccess = onLogout)
                             },
                             leadingIcon = {
-                                Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null)
+                                Icon(Icons.Default.ExitToApp, contentDescription = null)
                             }
                         )
                     }
@@ -149,9 +148,9 @@ fun MapScreen(
                 cameraPositionState = cameraPositionState,
                 properties = MapProperties(isMyLocationEnabled = false)
             ) {
-                // Marcador del usuario actual
+                // Marcador del usuario actual (solo si está conectado)
                 uiState.currentUser?.let { user ->
-                    if (user.latitud != 0.0 && user.longitud != 0.0) {
+                    if (user.latitud != 0.0 && user.longitud != 0.0 && uiState.isLocationEnabled) {
                         val position = LatLng(user.latitud, user.longitud)
 
                         Marker(
@@ -174,9 +173,9 @@ fun MapScreen(
                     }
                 }
 
-                // Marcadores de otros usuarios en línea
+                // Marcadores de otros usuarios en línea (solo si están conectados)
                 uiState.onlineUsers.forEach { user ->
-                    if (user.latitud != 0.0 && user.longitud != 0.0) {
+                    if (user.latitud != 0.0 && user.longitud != 0.0 && user.conectado) {
                         val position = LatLng(user.latitud, user.longitud)
 
                         Marker(
@@ -242,11 +241,11 @@ fun MapScreen(
                     }
 
                     // Divider vertical
-                    HorizontalDivider(
+                    Divider(
                         modifier = Modifier
                             .height(30.dp)
                             .width(1.dp),
-                        thickness = DividerDefaults.Thickness, color = MaterialTheme.colorScheme.outline
+                        color = MaterialTheme.colorScheme.outline
                     )
 
                     // Contador de usuarios
