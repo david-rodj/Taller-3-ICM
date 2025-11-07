@@ -1,6 +1,7 @@
 package com.example.taller3icm.presentation.viewmodel
 
 import android.location.Location
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.taller3icm.data.repository.AuthRepository
@@ -39,29 +40,39 @@ class MapViewModel(
             userRepository.getOnlineUsersFlow()
                 .collect { users ->
                     val currentUid = authRepository.currentUser?.uid
-                    val filteredUsers = users.filter { it.uid != currentUid }
 
+                    // SOLUCIÓN: Filtro triple para asegurar que solo usuarios conectados aparezcan
+                    val filteredUsers = users.filter { user ->
+                        user.uid != currentUid &&  // No incluir al usuario actual
+                                user.conectado &&           // Debe estar conectado
+                                user.latitud != 0.0 &&      // Debe tener coordenadas válidas
+                                user.longitud != 0.0
+                    }
+
+                    Log.d("MapViewModel", "Usuarios filtrados: ${filteredUsers.size}")
+
+                    // Actualizar rutas de usuarios conectados
                     filteredUsers.forEach { user ->
                         val currentPos = LatLng(user.latitud, user.longitud)
+                        val previousPos = _previousPositions[user.uid]
 
-                        if (user.latitud != 0.0 && user.longitud != 0.0) {
-                            val previousPos = _previousPositions[user.uid]
-
-                            if (previousPos == null || previousPos != currentPos) {
-                                if (!_otherUsersPaths.containsKey(user.uid)) {
-                                    _otherUsersPaths[user.uid] = mutableListOf()
-                                }
-
-                                _otherUsersPaths[user.uid]?.add(currentPos)
-                                _previousPositions[user.uid] = currentPos
+                        if (previousPos == null || previousPos != currentPos) {
+                            if (!_otherUsersPaths.containsKey(user.uid)) {
+                                _otherUsersPaths[user.uid] = mutableListOf()
                             }
+                            _otherUsersPaths[user.uid]?.add(currentPos)
+                            _previousPositions[user.uid] = currentPos
                         }
                     }
 
+                    // CRÍTICO: Limpiar usuarios que ya no están conectados
                     val onlineUids = filteredUsers.map { it.uid }.toSet()
                     val disconnectedUsers = _otherUsersPaths.keys - onlineUids
 
+                    Log.d("MapViewModel", "Usuarios desconectados a limpiar: ${disconnectedUsers.size}")
+
                     disconnectedUsers.forEach { uid ->
+                        Log.d("MapViewModel", "Limpiando usuario desconectado: $uid")
                         _otherUsersPaths.remove(uid)
                         _previousPositions.remove(uid)
                     }
@@ -75,7 +86,6 @@ class MapViewModel(
                 }
         }
     }
-
     fun onLocationToggle(enabled: Boolean) {
         viewModelScope.launch {
             val uid = authRepository.currentUser?.uid ?: return@launch

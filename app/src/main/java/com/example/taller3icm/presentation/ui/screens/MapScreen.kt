@@ -6,6 +6,7 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material3.*
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -175,7 +176,8 @@ fun MapScreen(
 
                 // Marcadores de otros usuarios en línea (solo si están conectados)
                 uiState.onlineUsers.forEach { user ->
-                    if (user.latitud != 0.0 && user.longitud != 0.0 && user.conectado) {
+                    // SOLUCIÓN: Verificación estricta antes de mostrar marcador
+                    if (user.conectado && user.latitud != 0.0 && user.longitud != 0.0) {
                         val position = LatLng(user.latitud, user.longitud)
 
                         Marker(
@@ -189,6 +191,7 @@ fun MapScreen(
                             )
                         )
 
+                        // Mostrar polyline solo si existe ruta para este usuario
                         uiState.otherUsersPaths[user.uid]?.let { path ->
                             if (path.isNotEmpty()) {
                                 Polyline(
@@ -241,11 +244,11 @@ fun MapScreen(
                     }
 
                     // Divider vertical
-                    Divider(
+                    HorizontalDivider(
                         modifier = Modifier
                             .height(30.dp)
                             .width(1.dp),
-                        color = MaterialTheme.colorScheme.outline
+                        thickness = DividerDefaults.Thickness, color = MaterialTheme.colorScheme.outline
                     )
 
                     // Contador de usuarios
@@ -260,8 +263,9 @@ fun MapScreen(
                             tint = MaterialTheme.colorScheme.primary
                         )
                         Spacer(Modifier.width(4.dp))
+                        // SOLUCIÓN: Contar solo usuarios verdaderamente conectados
                         Text(
-                            text = "${uiState.onlineUsers.size}",
+                            text = "${uiState.onlineUsers.count { it.conectado }}",
                             fontSize = 14.sp,
                             color = MaterialTheme.colorScheme.primary
                         )
